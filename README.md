@@ -14,6 +14,19 @@ How to use
 
 run ScalaTest using *-C x.y.z.DBReporter* option.
 
+Table Structure
+--------
+    INSERT INTO "TESTSUITES" ("SUITENAME",
+      "CLASSNAME",
+      "TIMESTAMP",
+      "SUCCESSES",
+      "FAILURES",
+      "IGNORES",
+      "PENDINGS",
+      "DURATION")
+    VALUES (?,?,?,?,?,?,?,?)
+
+And a h2 db file will be created at the current directory.
 
 License
 -------

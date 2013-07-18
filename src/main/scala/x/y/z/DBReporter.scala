@@ -40,7 +40,15 @@ class DBReporter extends ResourcefulReporter {
   private var eventList: ListBuffer[Event] = ListBuffer.empty
   private var runEndEvent: Option[Event] = None
 
-  import DBReporter.db
+  lazy val db: Database = Database.forURL("jdbc:h2:testsuites", driver = "org.h2.Driver")
+
+  {
+    db withSession {
+      implicit session: Session => TestSuites.createIfNotExist
+    }
+  }
+
+
   private def saveSuites(suiteResult: SuiteResult) {
     db withSession {
       implicit session: Session =>
@@ -52,7 +60,6 @@ class DBReporter extends ResourcefulReporter {
           suiteResult.testsIgnoredCount,
           suiteResult.testsPendingCount,
           suiteResult.duration)
-        TestSuites.createIfNotExist
         TestSuites.save(testSuite)
     }
   }
@@ -124,12 +131,21 @@ class DBReporter extends ResourcefulReporter {
   }
 
   def extractSuiteEvents(suiteId: String) = {
+
     def eventHasSameSuiteId[T <: {val suiteId : String}](e: Event) = e.asInstanceOf[T].suiteId == suiteId
+
     def nameInfoOptHasSameSuiteId[T <: {val nameInfo : Option[NameInfo]}](e: Event) = e.asInstanceOf[T].nameInfo.map(_.suiteId == suiteId).getOrElse(false)
+
     def nameInfoHasSameSuiteId[T <: {val nameInfo : NameInfo}](e: Event) = e.asInstanceOf[T].nameInfo.suiteId == suiteId
+
     eventList partition {
-      case e@(_: TestStarting | _: TestSucceeded | _: TestIgnored | _: TestFailed | _: TestPending
-              | _: TestCanceled | _: SuiteStarting) => eventHasSameSuiteId(e)
+      case e@(_: TestStarting   |
+              _: TestSucceeded  |
+              _: TestIgnored    |
+              _: TestFailed     |
+              _: TestPending    |
+              _: TestCanceled   |
+              _: SuiteStarting) => eventHasSameSuiteId(e)
       case e@(_: InfoProvided | _: MarkupProvided) => nameInfoOptHasSameSuiteId(e)
       case e@(_: ScopeOpened | _: ScopeClosed | _: ScopePending) => nameInfoHasSameSuiteId(e)
       case _ => false
@@ -162,7 +178,3 @@ object Resources {
   }
 }
 
-object DBReporter {
-  private val db: Database = Database.forURL("jdbc:h2:mem:testsuites", driver = "org.h2.Driver")
-  val create = db withSession(TestSuites.createIfNotExist)
-}
